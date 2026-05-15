@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIM Sync — Regression Test Harness</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --pass: #3fb950;
+    --fail: #f85149;
+    --warn: #d29922;
+    --border: #30363d;
+    --radius: 6px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header h1 span { color: var(--accent); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .btn {
+    padding: 8px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #79b8ff; }
+  .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #1c2128; }
+
+  .summary {
+    display: flex;
+    gap: 24px;
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 28px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .stat-val { font-size: 36px; font-weight: 800; }
+  .stat-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .stat-pass .stat-val { color: var(--pass); }
+  .stat-fail .stat-val { color: var(--fail); }
+  .stat-pct .stat-val { color: var(--accent); }
+
+  .verdict {
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    align-self: center;
+  }
+  .verdict-pass { background: rgba(63,185,80,0.15); color: var(--pass); }
+  .verdict-warn { background: rgba(210,158,34,0.15); color: var(--warn); }
+  .verdict-fail { background: rgba(248,81,73,0.15); color: var(--fail); }
+
+  .content { padding: 24px 32px; }
+
+  .section {
+    margin-bottom: 32px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+  .section-header h2 { font-size: 16px; font-weight: 600; }
+  .section-badge {
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge-pass { background: rgba(63,185,80,0.15); color: var(--pass); }
+  .badge-fail { background: rgba(248,81,73,0.15); color: var(--fail); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+  }
+  td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .status-pass { color: var(--pass); font-weight: 700; }
+  .status-fail { color: var(--fail); font-weight: 700; }
+  .test-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 32px;
+    color: var(--text-dim);
+  }
+  .empty-state h2 { font-size: 24px; margin-bottom: 12px; color: var(--text); }
+  .empty-state p { font-size: 16px; }
+
+  .meta {
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 16px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .collapse-icon { transition: transform 0.2s; display: inline-block; }
+  .collapsed .collapse-icon { transform: rotate(-90deg); }
+  .collapsed + table { display: none; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .btn, .toolbar { display: none; }
+    .stat-card { border: 1px solid #ccc; }
+    .stat-pass .stat-val { color: #16a34a; }
+    .stat-fail .stat-val { color: #dc2626; }
+    td, th { border-color: #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>PIM Sync</span> Regression Test Harness</h1>
+  <div class="toolbar">
+    <button class="btn btn-primary" id="run-btn">Run All Tests</button>
+    <button class="btn btn-secondary" id="export-btn" disabled>Export CSV</button>
+    <button class="btn btn-secondary" onclick="window.print()">Print</button>
+  </div>
+</header>
+
+<div class="summary" id="summary" style="display:none"></div>
+
+<div class="content" id="content">
+  <div class="empty-state">
+    <h2>Ready to test</h2>
+    <p>Click <strong>Run All Tests</strong> to validate FUNCTIONAL-SPEC.md against 58 regression checks.</p>
+    <p style="margin-top:8px">The harness fetches the spec from the same directory and pattern-matches each requirement.</p>
+  </div>
+</div>
+
+<div class="meta" id="meta" style="display:none">
+  <span id="meta-time"></span>
+  <span>FUNCTIONAL-SPEC.md — PIM Sync Webflow Extension</span>
+</div>
+
+<script>
+const SECTIONS = {
+  '1': 'Asset Migration Pipeline',
+  '2': 'AI ALT Text & Auto-Tagging',
+  '3': 'Accessibility (WCAG 2.2 AA)',
+  '4': 'Form Validation & Regex',
+  '5': 'Variant Thumbnail Slider',
+  '6': 'Commerce Widgets',
+  '7': 'Tag Reconciliation',
+  '8': 'Three-Way Data Mirror',
+  '9': 'Non-Destructive Publish',
+  '11': 'Compliance',
+  '12': 'Security',
+  'meta': 'Meta / Structure',
+};
+
+const TESTS = [
+  { id: 'S01', sec: '1', name: 'Asset pipeline stages defined (Ingest, Normalize, Mirror, Transform, Deliver, Bind)', test: md => /Ingest.*Normalize.*Mirror.*Transform.*Deliver.*Bind/s.test(md) },
+  { id: 'S02', sec: '1', name: 'Supported asset types include 3D models (GLB, USDZ, STL)', test: md => /\.glb.*\.usdz.*\.stl/s.test(md) },
+  { id: 'S03', sec: '1', name: 'Failure handling: exponential backoff, max 3 retries', test: md => /exponential backoff.*max 3 retries/si.test(md) },
+  { id: 'S04', sec: '2', name: 'ALT text generation model specified (Workers AI / vision model)', test: md => /llama-3.*vision/i.test(md) || /Workers AI/i.test(md) },
+  { id: 'S05', sec: '2', name: 'Auto-tagging prompt template defined', test: md => /List 3-5 product tags/i.test(md) },
+  { id: 'S06', sec: '2', name: 'Media type wrappers for img, video, and model-viewer', test: md => /model-viewer/i.test(md) && /\<video\>/i.test(md) },
+  { id: 'S07', sec: '3', name: 'ARIA role="article" and aria-label on product cards', test: md => /role="article".*aria-label/s.test(md) },
+  { id: 'S08', sec: '3', name: 'Keyboard navigation (ArrowLeft/Right, Escape)', test: md => /ArrowLeft.*ArrowRight/s.test(md) && /Escape/i.test(md) },
+  { id: 'S09', sec: '3', name: 'Focus trap defined for Quick View modal', test: md => /focus trap/i.test(md) },
+  { id: 'S10', sec: '3', name: 'Audit-before-insert blocks images without ALT', test: md => /Block insert.*prompt for ALT/si.test(md) },
+  { id: 'S11', sec: '4', name: 'Xano API URL regex validation defined', test: md => /xano\.io\/api:/i.test(md) },
+  { id: 'S12', sec: '4', name: 'Shopify token format regex (shpat/shpua/shprt)', test: md => /shp\(at.*ua.*rt\)/s.test(md) || /shpat_/i.test(md) },
+  { id: 'S13', sec: '4', name: 'XSS prevention via escapeHtml()', test: md => /escapeHtml/i.test(md) },
+  { id: 'S14', sec: '4', name: 'Server-side re-validation specified', test: md => /server-side/i.test(md) && /re-validate/i.test(md) },
+  { id: 'S15', sec: '5', name: 'Gallery architecture (main image + thumbnail strip)', test: md => /Main Image.*thumbnails/si.test(md) },
+  { id: 'S16', sec: '5', name: 'Variant-to-image mapping logic defined', test: md => /variant\.image_url.*find matching/si.test(md) },
+  { id: 'S17', sec: '5', name: 'CSS custom properties for slider (--pim-gallery-*)', test: md => /--pim-gallery-main-size/i.test(md) },
+  { id: 'S18', sec: '5', name: 'Lazy loading on thumbnails (loading="lazy")', test: md => /loading="lazy"/i.test(md) },
+  { id: 'S19', sec: '6', name: 'Add to Cart via Storefront API checkoutCreate', test: md => /checkoutCreate|Buy Button/si.test(md) },
+  { id: 'S20', sec: '6', name: 'Quick View with focus trap and Escape to close', test: md => /Quick View.*Escape/si.test(md) },
+  { id: 'S21', sec: '6', name: 'Cart persistence in localStorage (pim-cart-*)', test: md => /localStorage.*pim-cart/si.test(md) },
+  { id: 'S22', sec: '6', name: 'Embed code table (Header, Grid, PDP, Quick View, Cart)', test: md => /Header CSS Variables.*Collection Grid.*PDP Variants/si.test(md) },
+  { id: 'S23', sec: '7', name: 'Tag cleanup rules: normalize, trim, dedup', test: md => /Normalize case.*Trim whitespace.*Deduplicate/si.test(md) },
+  { id: 'S24', sec: '7', name: 'Blocklist editor for prohibited tags', test: md => /Blocklist editor/i.test(md) },
+  { id: 'S25', sec: '7', name: 'Tag limits enforced (250 tags, 255 chars per tag)', test: md => /250 tags/i.test(md) && /255 char/i.test(md) },
+  { id: 'S26', sec: '8', name: 'Three-way mirror diagram (Shopify, Xano, Webflow)', test: md => /Shopify.*Xano.*Webflow/si.test(md) },
+  { id: 'S27', sec: '8', name: 'Echo detection via KV marker (120s TTL)', test: md => /KV marker.*120s/si.test(md) || /echo detection/i.test(md) },
+  { id: 'S28', sec: '8', name: 'Conflict resolution (Keep Shopify / Keep Webflow)', test: md => /conflict.*Keep Shopify.*Keep Webflow/si.test(md) },
+  { id: 'S29', sec: '8', name: 'Cron schedule defined (FX rates, Omnibus audit)', test: md => /Every 6 hours|Daily at 02:00/si.test(md) },
+  { id: 'S30', sec: '8', name: 'Sync job logging schema (table 177)', test: md => /sync_jobs.*job_type.*status.*started_at/si.test(md) },
+  { id: 'S31', sec: '9', name: 'No-delete guarantee (never calls productDelete)', test: md => /never calls.*productDelete/si.test(md) || /No deletes/i.test(md) },
+  { id: 'S32', sec: '9', name: 'Draft-first for new products (status: DRAFT)', test: md => /status: DRAFT/i.test(md) },
+  { id: 'S33', sec: '9', name: 'Pre-publish validation (handle collision, required fields, price sanity)', test: md => /Handle collision.*Required fields.*Price sanity/si.test(md) },
+  { id: 'S34', sec: '9', name: 'Publish modes: Preview, Selective, Incremental, Full', test: md => /Preview.*Selective.*Incremental.*Full/si.test(md) },
+  { id: 'S35', sec: '9', name: 'Rollback procedures defined', test: md => /Rollback.*translationsRegister.*original values/si.test(md) },
+  { id: 'S36', sec: '9', name: 'Extension writes Xano only; Shopify app owns mutations', test: md => /Extension.*Xano.*Shopify app.*publish-sync/si.test(md) },
+  { id: 'S37', sec: '11', name: 'Data classification matrix (product, media, credentials, config)', test: md => /Data Classification.*Product catalog.*Business data/si.test(md) },
+  { id: 'S38', sec: '11', name: 'No customer PII statement', test: md => /does not access.*customer personal data/si.test(md) },
+  { id: 'S39', sec: '11', name: 'GDPR articles mapped (Art. 5, 17, 25, 28, 30, 32)', test: md => /Art\. 5.*Art\. 17.*Art\. 25.*Art\. 28/si.test(md) },
+  { id: 'S40', sec: '11', name: 'CCPA / CPRA compliance stated', test: md => /CCPA.*CPRA/si.test(md) },
+  { id: 'S41', sec: '11', name: 'Omnibus Directive price badge (30-day lowest price)', test: md => /Lowest price in last 30 days/i.test(md) },
+  { id: 'S42', sec: '11', name: 'PCI DSS — no payment card data handled', test: md => /never handles.*payment card data/si.test(md) },
+  { id: 'S43', sec: '11', name: 'WCAG 2.2 AA conformance declared', test: md => /WCAG 2\.2.*AA/i.test(md) },
+  { id: 'S44', sec: '11', name: 'AI content disclosure (Accept/Edit/Reject review flow)', test: md => /AI-generated.*Accept.*Edit.*Reject/si.test(md) },
+  { id: 'S45', sec: '12', name: 'API group isolation (api:Ksv9J-nS, CRM tables 180-183 blocked)', test: md => /api:Ksv9J-nS.*CRM tables.*180.*183/si.test(md) },
+  { id: 'S46', sec: '12', name: 'TLS 1.2 minimum enforced', test: md => /TLS 1\.2/i.test(md) },
+  { id: 'S47', sec: '12', name: 'XSS mitigation via escapeHtml() before DOM insertion', test: md => /escapeHtml\(\).*DOM insertion/si.test(md) },
+  { id: 'S48', sec: '12', name: 'Path traversal prevention (assets/ prefix, no .. sequences)', test: md => /assets\/.*no.*\.\. sequences/si.test(md) },
+  { id: 'S49', sec: '12', name: 'SSRF prevention (no user-provided URLs for server-side fetch)', test: md => /SSRF.*do not accept user-provided URLs/si.test(md) },
+  { id: 'S50', sec: '12', name: 'SVG sanitization (strip script, iframe, foreignObject)', test: md => /strip.*script.*iframe.*foreignObject/si.test(md) },
+  { id: 'S51', sec: '12', name: 'CORS policy defined per endpoint category', test: md => /Public data.*\*.*GET.*HEAD/si.test(md) },
+  { id: 'S52', sec: '12', name: 'Secrets rotation procedure documented', test: md => /Key rotation procedure/i.test(md) },
+  { id: 'S53', sec: '12', name: 'Rate limiting per API (Shopify 1000 cost, Xano 100 req/s)', test: md => /Shopify.*1000 cost.*Xano.*100 req/si.test(md) },
+  { id: 'S54', sec: '12', name: 'Incident response table (leaked key, spoofing, XSS, breach)', test: md => /Leaked API key.*Webhook spoofing.*XSS in embed/si.test(md) },
+  { id: 'S55', sec: '12', name: 'Sensitive data never logged (tokens, API keys)', test: md => /never logged.*access tokens.*API keys/si.test(md) },
+  { id: 'S56', sec: 'meta', name: 'Standalone vs Paired deployment modes defined', test: md => /Standalone.*Paired.*Xano tables only/si.test(md) },
+  { id: 'S57', sec: 'meta', name: 'Xano API group ID present (api:Ksv9J-nS)', test: md => /api:Ksv9J-nS/i.test(md) },
+  { id: 'S58', sec: 'meta', name: 'Webflow App Client ID present', test: md => /f91764136187/i.test(md) },
+];
+
+let lastResults = null;
+
+async function runTests() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading spec...';
+
+  let md;
+  try {
+    const res = await fetch('../FUNCTIONAL-SPEC.md');
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    md = await res.text();
+  } catch (e) {
+    alert(`Failed to load FUNCTIONAL-SPEC.md: ${e.message}\n\nMake sure you're serving from the repo root or docs/ directory.`);
+    btn.disabled = false;
+    btn.textContent = 'Run All Tests';
+    return;
+  }
+
+  btn.textContent = 'Running...';
+  const start = performance.now();
+
+  const results = TESTS.map(t => ({ ...t, passed: t.test(md) }));
+  const elapsed = Math.round(performance.now() - start);
+  lastResults = results;
+
+  const passed = results.filter(r => r.passed).length;
+  const failed = results.filter(r => !r.passed).length;
+  const total = results.length;
+  const pct = Math.round((passed / total) * 100);
+
+  // Summary
+  const summary = document.getElementById('summary');
+  summary.style.display = 'flex';
+  summary.innerHTML = `
+    <div class="stat-card stat-pass"><div class="stat-val">${passed}</div><div class="stat-label">Passed</div></div>
+    <div class="stat-card stat-fail"><div class="stat-val">${failed}</div><div class="stat-label">Failed</div></div>
+    <div class="stat-card"><div class="stat-val">${total}</div><div class="stat-label">Total</div></div>
+    <div class="stat-card stat-pct"><div class="stat-val">${pct}%</div><div class="stat-label">Coverage</div></div>
+    <div class="verdict ${pct === 100 ? 'verdict-pass' : pct >= 90 ? 'verdict-warn' : 'verdict-fail'}">
+      ${pct === 100 ? 'ALL CHECKS PASS' : pct >= 90 ? 'NEAR COMPLETE' : 'GAPS FOUND'}
+    </div>
+  `;
+
+  // Results by section
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  for (const [secId, secName] of Object.entries(SECTIONS)) {
+    const secTests = results.filter(r => r.sec === secId);
+    if (secTests.length === 0) continue;
+
+    const secPassed = secTests.filter(t => t.passed).length;
+    const allPass = secPassed === secTests.length;
+
+    const section = document.createElement('div');
+    section.className = 'section';
+    section.innerHTML = `
+      <div class="section-header" onclick="this.classList.toggle('collapsed')">
+        <h2><span class="collapse-icon">&#9660;</span> ${secId === 'meta' ? '' : 'Section ' + secId + ' — '}${secName}</h2>
+        <span class="section-badge ${allPass ? 'badge-pass' : 'badge-fail'}">${secPassed}/${secTests.length}</span>
+      </div>
+      <table>
+        <thead><tr><th style="width:60px">ID</th><th>Requirement</th><th style="width:80px">Status</th></tr></thead>
+        <tbody>
+          ${secTests.map(t => `
+            <tr>
+              <td class="test-id">${t.id}</td>
+              <td>${t.name}</td>
+              <td class="${t.passed ? 'status-pass' : 'status-fail'}">${t.passed ? 'PASS' : 'FAIL'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    content.appendChild(section);
+  }
+
+  // Meta
+  const meta = document.getElementById('meta');
+  meta.style.display = 'flex';
+  document.getElementById('meta-time').textContent = `Ran ${total} tests in ${elapsed}ms — ${new Date().toISOString()}`;
+
+  // Enable export
+  document.getElementById('export-btn').disabled = false;
+
+  btn.disabled = false;
+  btn.textContent = 'Run All Tests';
+}
+
+function exportCSV() {
+  if (!lastResults) return;
+  const header = 'ID,Section,Requirement,Status\n';
+  const rows = lastResults.map(r =>
+    `${r.id},"${SECTIONS[r.sec] || r.sec}","${r.name.replace(/"/g, '""')}",${r.passed ? 'PASS' : 'FAIL'}`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `pim-sync-regression-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('run-btn').addEventListener('click', runTests);
+document.getElementById('export-btn').addEventListener('click', exportCSV);
+</script>
+</body>
+</html>

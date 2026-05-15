@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIM Sync — Explainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --red: #f85149;
+    --orange: #d29922;
+    --border: #30363d;
+    --font: 'Inter', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    width: 1920px;
+    height: 1080px;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    padding: 80px;
+  }
+  .slide.active { opacity: 1; }
+  .slide.exit { opacity: 0; }
+
+  /* Shared elements */
+  h1 { font-size: 64px; font-weight: 800; letter-spacing: -1px; text-align: center; }
+  h2 { font-size: 48px; font-weight: 700; letter-spacing: -0.5px; text-align: center; margin-bottom: 40px; }
+  h3 { font-size: 32px; font-weight: 600; margin-bottom: 24px; }
+  .subtitle { font-size: 28px; color: var(--text-dim); margin-top: 16px; text-align: center; }
+  .accent { color: var(--accent); }
+  .green { color: var(--accent2); }
+  .red { color: var(--red); }
+  .orange { color: var(--orange); }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes typewriter {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  @keyframes flowRight {
+    0% { transform: translateX(-20px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes drawLine {
+    from { stroke-dashoffset: 1000; }
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(60px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes pop {
+    0% { transform: scale(0); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes checkmark {
+    0% { stroke-dashoffset: 50; }
+    100% { stroke-dashoffset: 0; }
+  }
+  @keyframes progressFill {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+
+  .anim-fade-up {
+    opacity: 0;
+    animation: fadeUp 0.7s ease forwards;
+  }
+  .anim-fade-in {
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+  }
+  .anim-pop {
+    opacity: 0;
+    animation: pop 0.4s ease forwards;
+  }
+  .delay-1 { animation-delay: 0.3s; }
+  .delay-2 { animation-delay: 0.6s; }
+  .delay-3 { animation-delay: 0.9s; }
+  .delay-4 { animation-delay: 1.2s; }
+  .delay-5 { animation-delay: 1.5s; }
+  .delay-6 { animation-delay: 1.8s; }
+  .delay-7 { animation-delay: 2.1s; }
+  .delay-8 { animation-delay: 2.4s; }
+
+  /* Platform icons */
+  .platform-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .icon-shopify { background: #96bf48; color: #fff; }
+  .icon-xano { background: #6366f1; color: #fff; }
+  .icon-webflow { background: #4353ff; color: #fff; }
+  .icon-r2 { background: #f48120; color: #fff; }
+  .icon-ai { background: #8b5cf6; color: #fff; }
+
+  /* Triangle diagram */
+  .triangle-container {
+    position: relative;
+    width: 700px;
+    height: 500px;
+  }
+  .tri-node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .tri-node span { font-size: 18px; font-weight: 600; }
+  .tri-top { top: 0; left: 50%; transform: translateX(-50%); }
+  .tri-left { bottom: 0; left: 60px; }
+  .tri-right { bottom: 0; right: 60px; }
+
+  .tri-line {
+    position: absolute;
+    height: 3px;
+    background: var(--border);
+    transform-origin: left center;
+    transition: background 0.5s;
+  }
+  .tri-line.connected { background: var(--accent); }
+  .tri-line.disconnected {
+    background: repeating-linear-gradient(90deg, var(--red) 0, var(--red) 8px, transparent 8px, transparent 16px);
+  }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 1400px;
+  }
+  .pipe-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    animation: flowRight 0.5s ease forwards;
+  }
+  .pipe-stage .platform-icon { width: 80px; height: 80px; border-radius: 16px; }
+  .pipe-label { font-size: 16px; font-weight: 600; text-align: center; }
+  .pipe-desc { font-size: 13px; color: var(--text-dim); text-align: center; max-width: 160px; }
+  .pipe-arrow {
+    font-size: 32px;
+    color: var(--accent);
+    opacity: 0;
+    animation: fadeIn 0.3s ease forwards;
+    flex-shrink: 0;
+    width: 60px;
+    text-align: center;
+  }
+  .progress-bar {
+    width: 100%;
+    max-width: 1200px;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    margin-top: 40px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent2);
+    border-radius: 4px;
+    animation: progressFill 3s ease forwards;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .card-row {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    max-width: 1400px;
+  }
+  .card-row .card { flex: 1; }
+
+  /* Tag chips */
+  .tag-chip {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 15px;
+    font-weight: 500;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    margin: 4px;
+  }
+  .tag-chip.dupe { border-color: var(--red); color: var(--red); }
+  .tag-chip.clean { border-color: var(--accent2); color: var(--accent2); }
+  .tag-chip.blocked { border-color: var(--text-dim); color: var(--text-dim); text-decoration: line-through; }
+
+  /* ARIA labels */
+  .aria-label {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    background: rgba(88,166,255,0.15);
+    color: var(--accent);
+    margin: 3px;
+  }
+
+  /* Checklist */
+  .check-list { list-style: none; }
+  .check-list li {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 22px;
+    padding: 12px 0;
+    opacity: 0;
+    animation: fadeUp 0.5s ease forwards;
+  }
+  .check-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .check-pass { background: rgba(63,185,80,0.2); color: var(--accent2); }
+  .check-fail { background: rgba(248,81,73,0.2); color: var(--red); }
+
+  /* Compliance badges */
+  .badge-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 24px;
+  }
+  .compliance-badge {
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    border: 2px solid;
+    opacity: 0;
+    animation: pop 0.4s ease forwards;
+  }
+  .badge-gdpr { border-color: var(--accent); color: var(--accent); }
+  .badge-ccpa { border-color: var(--accent2); color: var(--accent2); }
+  .badge-pci { border-color: var(--orange); color: var(--orange); }
+  .badge-wcag { border-color: #a78bfa; color: #a78bfa; }
+  .badge-omnibus { border-color: #f472b6; color: #f472b6; }
+  .badge-tls { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Widget panels */
+  .widget-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .widget-btn {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-cart { background: #1a1a1a; color: #fff; border: 1px solid #333; }
+  .btn-disabled { background: #333; color: #666; cursor: not-allowed; }
+
+  /* Slide counter */
+  #counter {
+    position: fixed;
+    bottom: 24px;
+    right: 32px;
+    font-size: 14px;
+    color: var(--text-dim);
+    z-index: 100;
+  }
+
+  /* Controls hint */
+  #controls {
+    position: fixed;
+    bottom: 24px;
+    left: 32px;
+    font-size: 13px;
+    color: var(--text-dim);
+    z-index: 100;
+    opacity: 0.6;
+  }
+
+  /* Image placeholder */
+  .img-placeholder {
+    width: 280px;
+    height: 280px;
+    background: linear-gradient(135deg, #1c2128 0%, #2d333b 50%, #1c2128 100%);
+    background-size: 200% 200%;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: var(--text-dim);
+  }
+  .img-placeholder.shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(90deg, #1c2128 25%, #2d333b 50%, #1c2128 75%);
+    background-size: 200% 100%;
+  }
+
+  /* Thumbnail strip */
+  .thumb-strip {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .thumb {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .thumb.active { border-color: var(--accent); }
+
+  /* Flow arrows */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    margin: 20px 0;
+  }
+  .flow-box {
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .flow-arrow { font-size: 28px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Slide 1: Title -->
+<div class="slide active" id="s1">
+  <h1 class="anim-fade-up" style="font-size:80px">
+    <span class="accent">PIM</span> Sync
+  </h1>
+  <p class="subtitle anim-fade-up delay-1">Webflow Designer Extension</p>
+  <p class="anim-fade-up delay-2" style="font-size:24px;color:var(--text-dim);margin-top:32px">
+    One extension. Three systems in sync. Your products, everywhere.
+  </p>
+</div>
+
+<!-- Slide 2: The Problem -->
+<div class="slide" id="s2">
+  <h2 class="anim-fade-up">The Problem</h2>
+  <div class="triangle-container anim-fade-in delay-1">
+    <div class="tri-node tri-top anim-pop delay-2">
+      <div class="platform-icon icon-shopify">Shopify</div>
+      <span>Commerce</span>
+    </div>
+    <div class="tri-node tri-left anim-pop delay-3">
+      <div class="platform-icon icon-xano">Xano</div>
+      <span>Content API</span>
+    </div>
+    <div class="tri-node tri-right anim-pop delay-4">
+      <div class="platform-icon icon-webflow">Webflow</div>
+      <span>CMS</span>
+    </div>
+    <svg width="700" height="500" style="position:absolute;top:0;left:0;pointer-events:none">
+      <line x1="350" y1="120" x2="160" y2="380" stroke="var(--red)" stroke-width="3" stroke-dasharray="12 8" class="anim-fade-in delay-5"/>
+      <line x1="350" y1="120" x2="540" y2="380" stroke="var(--red)" stroke-width="3" stroke-dasharray="12 8" class="anim-fade-in delay-5"/>
+      <line x1="160" y1="380" x2="540" y2="380" stroke="var(--red)" stroke-width="3" stroke-dasharray="12 8" class="anim-fade-in delay-5"/>
+      <text x="200" y="240" fill="var(--red)" font-size="14" font-weight="600" class="anim-fade-in delay-6">stale prices</text>
+      <text x="430" y="240" fill="var(--red)" font-size="14" font-weight="600" class="anim-fade-in delay-6">missing images</text>
+      <text x="310" y="420" fill="var(--red)" font-size="14" font-weight="600" class="anim-fade-in delay-7">tag drift</text>
+    </svg>
+  </div>
+</div>
+
+<!-- Slide 3: The Solution -->
+<div class="slide" id="s3">
+  <h2 class="anim-fade-up">The Solution</h2>
+  <div class="triangle-container anim-fade-in delay-1">
+    <div class="tri-node tri-top anim-pop delay-2">
+      <div class="platform-icon icon-shopify">Shopify</div>
+      <span>Commerce</span>
+    </div>
+    <div class="tri-node tri-left anim-pop delay-3">
+      <div class="platform-icon icon-xano">Xano</div>
+      <span>Content API</span>
+    </div>
+    <div class="tri-node tri-right anim-pop delay-4">
+      <div class="platform-icon icon-webflow">Webflow</div>
+      <span>CMS</span>
+    </div>
+    <svg width="700" height="500" style="position:absolute;top:0;left:0;pointer-events:none">
+      <line x1="350" y1="120" x2="160" y2="380" stroke="var(--accent)" stroke-width="3" class="anim-fade-in delay-5"/>
+      <line x1="350" y1="120" x2="540" y2="380" stroke="var(--accent)" stroke-width="3" class="anim-fade-in delay-5"/>
+      <line x1="160" y1="380" x2="540" y2="380" stroke="var(--accent)" stroke-width="3" class="anim-fade-in delay-5"/>
+      <polygon points="340,180 360,180 350,160" fill="var(--accent)" class="anim-fade-in delay-6"/>
+      <polygon points="170,360 190,360 180,380" fill="var(--accent)" class="anim-fade-in delay-6"/>
+      <polygon points="530,360 550,360 540,380" fill="var(--accent)" class="anim-fade-in delay-6"/>
+    </svg>
+  </div>
+  <p class="subtitle anim-fade-up delay-6">Standalone with Xano + Webflow, or paired with the PIM Sync Shopify App</p>
+</div>
+
+<!-- Slide 4: Asset Migration -->
+<div class="slide" id="s4">
+  <h2 class="anim-fade-up">Asset Migration Pipeline</h2>
+  <div class="pipeline">
+    <div class="pipe-stage" style="animation-delay:0.3s">
+      <div class="platform-icon icon-shopify" style="font-size:12px">Shopify</div>
+      <div class="pipe-label">Ingest</div>
+      <div class="pipe-desc">GraphQL bulk query</div>
+    </div>
+    <div class="pipe-arrow" style="animation-delay:0.5s">&rarr;</div>
+    <div class="pipe-stage" style="animation-delay:0.7s">
+      <div class="platform-icon icon-xano" style="font-size:12px">Xano</div>
+      <div class="pipe-label">Normalize</div>
+      <div class="pipe-desc">Table 166 — per-image metadata</div>
+    </div>
+    <div class="pipe-arrow" style="animation-delay:0.9s">&rarr;</div>
+    <div class="pipe-stage" style="animation-delay:1.1s">
+      <div class="platform-icon icon-r2" style="font-size:12px">R2</div>
+      <div class="pipe-label">Mirror</div>
+      <div class="pipe-desc">Immutable cache, CORS, range requests</div>
+    </div>
+    <div class="pipe-arrow" style="animation-delay:1.3s">&rarr;</div>
+    <div class="pipe-stage" style="animation-delay:1.5s">
+      <div class="platform-icon icon-webflow" style="font-size:12px">Webflow</div>
+      <div class="pipe-label">Bind</div>
+      <div class="pipe-desc">CMS image field updated</div>
+    </div>
+  </div>
+  <div class="progress-bar anim-fade-in delay-4">
+    <div class="progress-fill"></div>
+  </div>
+  <p class="anim-fade-up delay-5" style="margin-top:16px;color:var(--text-dim);font-size:18px">
+    Photos, video, 3D models (GLB/USDZ/STL) &mdash; auto-retry on failure
+  </p>
+</div>
+
+<!-- Slide 5: AI ALT Text -->
+<div class="slide" id="s5">
+  <h2 class="anim-fade-up">AI-Powered ALT Text &amp; Tagging</h2>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-top:20px">
+    <div class="anim-fade-in delay-1">
+      <div class="img-placeholder shimmer" style="width:320px;height:320px;font-size:64px">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="card anim-fade-up delay-2">
+        <h3><span class="accent">ALT Text</span> — Generated</h3>
+        <p style="font-size:20px;line-height:1.6;margin:16px 0;font-style:italic;color:var(--text-dim)">
+          "Matte black wireless headphones with rotating ear cups on white background"
+        </p>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <span class="widget-btn btn-primary" style="padding:8px 20px;font-size:14px">Accept</span>
+          <span class="widget-btn btn-cart" style="padding:8px 20px;font-size:14px">Edit</span>
+          <span class="widget-btn btn-disabled" style="padding:8px 20px;font-size:14px">Reject</span>
+        </div>
+      </div>
+      <div class="card anim-fade-up delay-3" style="margin-top:20px">
+        <h3><span class="accent">Auto-Tags</span> — Suggested</h3>
+        <div style="margin-top:12px">
+          <span class="tag-chip clean anim-pop delay-4">headphones</span>
+          <span class="tag-chip clean anim-pop delay-5">wireless</span>
+          <span class="tag-chip clean anim-pop delay-6">matte-black</span>
+          <span class="tag-chip clean anim-pop delay-7">audio</span>
+          <span class="tag-chip clean anim-pop delay-8">over-ear</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 6: Accessibility -->
+<div class="slide" id="s6">
+  <h2 class="anim-fade-up">Accessibility — WCAG 2.2 AA</h2>
+  <div class="card-row" style="margin-top:20px">
+    <div class="card anim-fade-up delay-1">
+      <h3>ARIA Roles</h3>
+      <div style="margin-top:12px">
+        <div class="aria-label anim-pop delay-2">role="article"</div>
+        <div class="aria-label anim-pop delay-3">aria-label="{title}"</div>
+        <div class="aria-label anim-pop delay-3">aria-haspopup="dialog"</div>
+        <div class="aria-label anim-pop delay-4">role="radiogroup"</div>
+        <div class="aria-label anim-pop delay-4">aria-checked="true"</div>
+        <div class="aria-label anim-pop delay-5">role="tablist"</div>
+        <div class="aria-label anim-pop delay-5">aria-modal="true"</div>
+        <div class="aria-label anim-pop delay-6">aria-live="polite"</div>
+      </div>
+    </div>
+    <div class="card anim-fade-up delay-2">
+      <h3>Keyboard Navigation</h3>
+      <ul class="check-list" style="margin-top:12px">
+        <li style="animation-delay:0.6s"><span class="check-icon check-pass">&#10003;</span> Arrow keys for thumbnails</li>
+        <li style="animation-delay:0.9s"><span class="check-icon check-pass">&#10003;</span> Tab cycles within modal</li>
+        <li style="animation-delay:1.2s"><span class="check-icon check-pass">&#10003;</span> Escape closes Quick View</li>
+        <li style="animation-delay:1.5s"><span class="check-icon check-pass">&#10003;</span> Focus trap enforced</li>
+      </ul>
+    </div>
+    <div class="card anim-fade-up delay-3">
+      <h3>Audit-Before-Insert</h3>
+      <ul class="check-list" style="margin-top:12px">
+        <li style="animation-delay:0.9s"><span class="check-icon check-pass">&#10003;</span> No empty ALT text</li>
+        <li style="animation-delay:1.2s"><span class="check-icon check-pass">&#10003;</span> Buttons have labels</li>
+        <li style="animation-delay:1.5s"><span class="check-icon check-pass">&#10003;</span> 4.5:1 contrast ratio</li>
+        <li style="animation-delay:1.8s"><span class="check-icon check-pass">&#10003;</span> Logical tab order</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 7: Variant Thumbnail Slider -->
+<div class="slide" id="s7">
+  <h2 class="anim-fade-up">Variant Image Gallery</h2>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-top:20px">
+    <div class="anim-fade-in delay-1">
+      <div class="img-placeholder" style="width:480px;height:480px;border:2px solid var(--border)">
+        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      </div>
+      <div class="thumb-strip anim-fade-in delay-3">
+        <div class="thumb active anim-pop delay-3">1</div>
+        <div class="thumb anim-pop delay-4">2</div>
+        <div class="thumb anim-pop delay-4">3</div>
+        <div class="thumb anim-pop delay-5">4</div>
+        <div class="thumb anim-pop delay-5">5</div>
+        <div class="thumb anim-pop delay-6" style="position:relative">
+          <span>+3</span>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="card anim-fade-up delay-2">
+        <h3>Variant-Linked</h3>
+        <p style="color:var(--text-dim);margin:8px 0 16px;font-size:17px">Select a variant &rarr; gallery scrolls to that image</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          <span class="widget-btn btn-primary" style="padding:8px 16px;font-size:13px">Black</span>
+          <span class="widget-btn btn-cart" style="padding:8px 16px;font-size:13px">White</span>
+          <span class="widget-btn btn-cart" style="padding:8px 16px;font-size:13px">Navy</span>
+        </div>
+      </div>
+      <div class="card anim-fade-up delay-3" style="margin-top:16px">
+        <h3>CSS Custom Properties</h3>
+        <div style="margin-top:8px;font-family:monospace;font-size:14px;color:var(--accent);line-height:2">
+          --pim-gallery-main-size: 800px<br>
+          --pim-gallery-thumb-size: 80px<br>
+          --pim-gallery-thumb-gap: 8px<br>
+          --pim-gallery-radius: 0.375rem
+        </div>
+      </div>
+      <div class="card anim-fade-up delay-4" style="margin-top:16px">
+        <h3>Features</h3>
+        <p style="color:var(--text-dim);font-size:15px;line-height:1.8">
+          Lazy-loaded thumbnails &bull; Touch swipe on mobile &bull; Arrow key navigation &bull; Click-to-zoom lightbox &bull; R2 CDN preferred
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 8: Commerce Widgets -->
+<div class="slide" id="s8">
+  <h2 class="anim-fade-up">Commerce Widgets</h2>
+  <div class="card-row" style="margin-top:20px">
+    <div class="widget-panel anim-fade-up delay-1">
+      <h3><span class="accent">Add to Cart</span></h3>
+      <div style="display:flex;align-items:center;gap:12px;margin:16px 0">
+        <span class="widget-btn btn-cart" style="font-size:18px;padding:4px 12px">&minus;</span>
+        <span style="font-size:24px;font-weight:700;width:40px;text-align:center">1</span>
+        <span class="widget-btn btn-cart" style="font-size:18px;padding:4px 12px">+</span>
+      </div>
+      <span class="widget-btn btn-primary" style="width:100%;text-align:center;padding:14px;font-size:16px">
+        Add to Cart &mdash; $149.00
+      </span>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:12px">Real-time inventory via Storefront API</p>
+    </div>
+    <div class="widget-panel anim-fade-up delay-2">
+      <h3><span class="accent">Quick View</span></h3>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0;text-align:center">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+        <p style="font-size:15px;margin-top:8px">Product Title</p>
+        <p style="font-size:14px;color:var(--text-dim)">$149.00</p>
+      </div>
+      <p style="font-size:13px;color:var(--text-dim)">Focus-trapped dialog &bull; Escape to close &bull; Mobile: slide-up sheet</p>
+    </div>
+    <div class="widget-panel anim-fade-up delay-3">
+      <h3><span class="accent">Cart Drawer</span></h3>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin:12px 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:14px">Headphones &times; 1</span>
+          <span style="font-size:14px;font-weight:600">$149.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+          <span style="font-size:14px">Cable &times; 2</span>
+          <span style="font-size:14px;font-weight:600">$29.98</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px;margin:8px 0">
+        <span>Subtotal</span><span>$178.98</span>
+      </div>
+      <span class="widget-btn btn-primary" style="width:100%;text-align:center;padding:12px;font-size:15px">
+        Checkout
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 9: Tag Reconciliation -->
+<div class="slide" id="s9">
+  <h2 class="anim-fade-up">Tag Reconciliation</h2>
+  <div style="display:flex;gap:48px;margin-top:32px;width:100%;max-width:1400px">
+    <div class="card anim-fade-up delay-1" style="flex:1">
+      <h3 class="red">Before</h3>
+      <div style="margin-top:16px">
+        <span class="tag-chip dupe">Leather</span>
+        <span class="tag-chip dupe">leather</span>
+        <span class="tag-chip dupe">LEATHER</span>
+        <span class="tag-chip">wireless</span>
+        <span class="tag-chip dupe"> cotton </span>
+        <span class="tag-chip dupe">cotton</span>
+        <span class="tag-chip blocked">deprecated-tag</span>
+        <span class="tag-chip">audio</span>
+        <span class="tag-chip dupe">accessories</span>
+        <span class="tag-chip dupe">accessory</span>
+        <span class="tag-chip" style="color:var(--text-dim)"></span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:48px;color:var(--accent);opacity:0;animation:fadeIn 0.5s ease 1.2s forwards">&rarr;</div>
+    <div class="card anim-fade-up delay-3" style="flex:1">
+      <h3 class="green">After</h3>
+      <div style="margin-top:16px">
+        <span class="tag-chip clean">leather</span>
+        <span class="tag-chip clean">wireless</span>
+        <span class="tag-chip clean">cotton</span>
+        <span class="tag-chip clean">audio</span>
+        <span class="tag-chip clean">accessories</span>
+      </div>
+      <div style="margin-top:24px;font-size:14px;color:var(--text-dim)">
+        <span class="green">3</span> duplicates merged &bull;
+        <span class="green">1</span> blocklisted removed &bull;
+        <span class="green">2</span> whitespace trimmed &bull;
+        <span class="green">1</span> empty removed
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 10: Three-Way Mirror -->
+<div class="slide" id="s10">
+  <h2 class="anim-fade-up">Three-Way Data Mirror</h2>
+  <div class="triangle-container anim-fade-in delay-1" style="height:400px">
+    <div class="tri-node tri-top anim-pop delay-2">
+      <div class="platform-icon icon-shopify" style="width:80px;height:80px;font-size:11px">Shopify</div>
+    </div>
+    <div class="tri-node tri-left anim-pop delay-2">
+      <div class="platform-icon icon-xano" style="width:80px;height:80px;font-size:11px">Xano</div>
+    </div>
+    <div class="tri-node tri-right anim-pop delay-2">
+      <div class="platform-icon icon-webflow" style="width:80px;height:80px;font-size:11px">Webflow</div>
+    </div>
+    <svg width="700" height="400" style="position:absolute;top:0;left:0;pointer-events:none">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)"/></marker>
+        <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="var(--accent2)"/></marker>
+      </defs>
+      <!-- Shopify to Xano -->
+      <line x1="320" y1="110" x2="190" y2="280" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)" class="anim-fade-in delay-3"/>
+      <text x="215" y="180" fill="var(--accent)" font-size="12" font-weight="600" class="anim-fade-in delay-4">webhook</text>
+      <!-- Xano to Webflow -->
+      <line x1="210" y1="310" x2="480" y2="310" stroke="var(--accent2)" stroke-width="2" marker-end="url(#arrow-green)" class="anim-fade-in delay-4"/>
+      <text x="310" y="340" fill="var(--accent2)" font-size="12" font-weight="600" class="anim-fade-in delay-5">sync push</text>
+      <!-- Webflow to Xano -->
+      <line x1="480" y1="290" x2="210" y2="290" stroke="var(--orange)" stroke-width="2" marker-end="url(#arrow)" class="anim-fade-in delay-5" style="--accent:var(--orange)"/>
+      <text x="310" y="280" fill="var(--orange)" font-size="12" font-weight="600" class="anim-fade-in delay-6">webhook</text>
+      <!-- Xano to Shopify -->
+      <line x1="190" y1="270" x2="330" y2="110" stroke="var(--accent2)" stroke-width="2" marker-end="url(#arrow-green)" class="anim-fade-in delay-6"/>
+      <text x="220" y="210" fill="var(--accent2)" font-size="12" font-weight="600" class="anim-fade-in delay-7">Shopify app</text>
+    </svg>
+  </div>
+  <div class="card-row anim-fade-up delay-5" style="max-width:1200px;margin-top:8px">
+    <div class="card" style="text-align:center">
+      <h3 style="font-size:18px">Echo Detection</h3>
+      <p style="color:var(--text-dim);font-size:15px">KV marker + Xano state &bull; 120s window prevents infinite loops</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <h3 style="font-size:18px">Conflict Resolution</h3>
+      <p style="color:var(--text-dim);font-size:15px">Same field edited on both sides? Flagged for manual Keep Shopify / Keep Webflow</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <h3 style="font-size:18px">Job Logging</h3>
+      <p style="color:var(--text-dim);font-size:15px">Every sync writes to Xano table 177 with timestamps, counts, errors</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 11: Non-Destructive Publish -->
+<div class="slide" id="s11">
+  <h2 class="anim-fade-up">Non-Destructive Publish</h2>
+  <div style="display:flex;gap:48px;margin-top:20px;width:100%;max-width:1400px">
+    <div style="flex:1">
+      <ul class="check-list">
+        <li style="animation-delay:0.3s"><span class="check-icon check-pass">&#10003;</span> Never deletes products</li>
+        <li style="animation-delay:0.5s"><span class="check-icon check-pass">&#10003;</span> New products land as Draft</li>
+        <li style="animation-delay:0.7s"><span class="check-icon check-pass">&#10003;</span> Only changed fields sent</li>
+        <li style="animation-delay:0.9s"><span class="check-icon check-pass">&#10003;</span> Prices require confirmation</li>
+        <li style="animation-delay:1.1s"><span class="check-icon check-pass">&#10003;</span> Images appended, never removed</li>
+        <li style="animation-delay:1.3s"><span class="check-icon check-pass">&#10003;</span> Variants preserved in place</li>
+        <li style="animation-delay:1.5s"><span class="check-icon check-pass">&#10003;</span> Translations appended per locale</li>
+      </ul>
+    </div>
+    <div style="flex:1">
+      <div class="card anim-fade-up delay-4">
+        <h3>Publish Flow</h3>
+        <div class="flow-diagram" style="flex-direction:column;align-items:stretch;gap:12px;margin-top:12px">
+          <div class="flow-box" style="background:rgba(88,166,255,0.1);border:1px solid var(--accent);color:var(--accent)">Extension validates + writes to Xano</div>
+          <div style="text-align:center;font-size:24px;color:var(--accent)">&darr;</div>
+          <div class="flow-box" style="background:rgba(99,102,241,0.1);border:1px solid #6366f1;color:#6366f1">Xano stores pending publish job</div>
+          <div style="text-align:center;font-size:24px;color:var(--accent)">&darr;</div>
+          <div class="flow-box" style="background:rgba(63,185,80,0.1);border:1px solid var(--accent2);color:var(--accent2)">Shopify App publish-sync worker executes mutations</div>
+        </div>
+        <p style="color:var(--text-dim);font-size:14px;margin-top:12px;text-align:center">
+          Extension never calls Shopify Admin API directly
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 12: Compliance & Security -->
+<div class="slide" id="s12">
+  <h2 class="anim-fade-up">Compliance &amp; Security</h2>
+  <div class="badge-row" style="margin-top:24px">
+    <div class="compliance-badge badge-gdpr" style="animation-delay:0.3s">GDPR</div>
+    <div class="compliance-badge badge-ccpa" style="animation-delay:0.5s">CCPA</div>
+    <div class="compliance-badge badge-pci" style="animation-delay:0.7s">PCI DSS</div>
+    <div class="compliance-badge badge-wcag" style="animation-delay:0.9s">WCAG 2.2 AA</div>
+    <div class="compliance-badge badge-omnibus" style="animation-delay:1.1s">EU Omnibus</div>
+    <div class="compliance-badge badge-tls" style="animation-delay:1.3s">TLS 1.2+</div>
+  </div>
+  <div class="card-row anim-fade-up delay-4" style="margin-top:40px;max-width:1400px">
+    <div class="card">
+      <h3 style="font-size:17px">No Customer PII</h3>
+      <p style="color:var(--text-dim);font-size:14px;margin-top:8px">Product data only. No cookies. No visitor tracking. No IP logging.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:17px">API Isolation</h3>
+      <p style="color:var(--text-dim);font-size:14px;margin-top:8px">PIM and CRM API groups have independent keys. Zero cross-app access.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:17px">Webhook Validation</h3>
+      <p style="color:var(--text-dim);font-size:14px;margin-top:8px">HMAC-SHA256 on every Shopify and Webflow webhook payload.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:17px">Secrets Management</h3>
+      <p style="color:var(--text-dim);font-size:14px;margin-top:8px">Encrypted at rest in Cloudflare KV. Independent rotation per service.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 13: Closing -->
+<div class="slide" id="s13">
+  <h1 class="anim-fade-up" style="font-size:72px">
+    <span class="accent">PIM</span> Sync
+  </h1>
+  <p class="subtitle anim-fade-up delay-1" style="font-size:28px;margin-top:24px">
+    Webflow Designer Extension
+  </p>
+  <p class="anim-fade-up delay-2" style="font-size:20px;color:var(--text-dim);margin-top:32px">
+    Works standalone or paired with the
+    <a href="https://apps.shopify.com/pim-sync" style="color:var(--accent);text-decoration:none">PIM Sync Shopify App</a>
+  </p>
+  <p class="anim-fade-up delay-3" style="font-size:18px;color:var(--text-dim);margin-top:40px">
+    Install the extension. Connect your stack. Keep everything in sync.
+  </p>
+</div>
+
+<div id="counter"></div>
+<div id="controls">Arrow keys or click to navigate &bull; Space = auto-play &bull; F = fullscreen</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+let autoPlay = null;
+
+function showSlide(n) {
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit');
+  current = ((n % slides.length) + slides.length) % slides.length;
+
+  // Reset animations by cloning
+  const slide = slides[current];
+  slide.classList.remove('exit');
+  slide.classList.add('active');
+
+  document.getElementById('counter').textContent = `${current + 1} / ${slides.length}`;
+}
+
+function next() { showSlide(current + 1); }
+function prev() { showSlide(current - 1); }
+
+function toggleAutoPlay() {
+  if (autoPlay) {
+    clearInterval(autoPlay);
+    autoPlay = null;
+    document.getElementById('controls').textContent = 'Auto-play paused';
+  } else {
+    autoPlay = setInterval(next, 8000);
+    document.getElementById('controls').textContent = 'Auto-playing (8s per slide) — Space to pause';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+  if (e.key === ' ') { e.preventDefault(); toggleAutoPlay(); }
+  if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+});
+
+document.addEventListener('click', e => {
+  if (e.clientX > window.innerWidth / 2) next();
+  else prev();
+});
+
+showSlide(0);
+</script>
+</body>
+</html>
