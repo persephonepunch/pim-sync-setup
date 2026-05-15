@@ -8,7 +8,6 @@ A Webflow Designer Extension that synchronizes product catalog data across Shopi
 |---|---|
 | [Functional Spec & Test Plan](FUNCTIONAL-SPEC.md) | Webflow extension requirements, compliance matrix, 58-point regression harness |
 | [Shopify App Spec](docs/SHOPIFY-APP-SPEC.md) | PIM Sync Shopify app — OAuth, billing, webhooks, data model, worker architecture |
-| [Audit Results](docs/AUDIT-RESULTS.md) | 78-point codebase audit against Shopify App Store requirements |
 | [Test Harness](docs/test-harness.html) | Interactive regression test — runs 58 spec coverage checks in-browser |
 | [Docs Hub](docs/index.html) | All specs rendered with sidebar navigation and live test runner |
 | [Explainer Presentation](docs/video/presentation.html) | 13-slide animated deck for screen recording |
